@@ -1,0 +1,154 @@
+<div id="survey-step" class="survey-step-shell transition duration-200 ease-out">
+
+    <div class="mb-3 overflow-hidden rounded-2xl bg-white shadow-glow ring-1 ring-congente-blue/5 sm:mb-4">
+        <div class="h-2 w-full bg-slate-100">
+            <div class="h-full rounded-full bg-gradient-to-r from-congente-orange to-congente-blue transition-all duration-700 ease-out"
+                 style="width: {{ progress_percent }}%"></div>
+        </div>
+    </div>
+
+    <div class="rounded-[2rem] bg-white p-5 shadow-glow ring-1 ring-congente-blue/5 sm:p-8">
+
+        <form
+            method="post"
+            action="{% url 'surveys:step' area.slug qr_entry.public_token step %}"
+            hx-post="{% url 'surveys:step' area.slug qr_entry.public_token step %}"
+            hx-target="#survey-step"
+            hx-swap="outerHTML swap:160ms settle:120ms"
+            class="space-y-5 sm:space-y-6"
+        >
+            {% csrf_token %}
+
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <span class="inline-flex rounded-full bg-congente-orangeSoft px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-congente-orange">
+                        Paso {{ step }} de {{ total_steps }}
+                    </span>
+                    <p class="mt-1.5 text-xs text-congente-ink/55">{{ area.name }} · {{ qr_entry.display_name }}</p>
+                </div>
+                <div class="flex-shrink-0 rounded-full bg-congente-blueSoft px-3.5 py-1.5 text-xs font-black text-congente-blue whitespace-nowrap">
+                    {{ progress_percent }}% ✓
+                </div>
+            </div>
+
+            {% if form.non_field_errors or form.response.errors or form.other_text.errors %}
+                <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {{ form.non_field_errors }}{{ form.response.errors }}{{ form.other_text.errors }}
+                </div>
+            {% endif %}
+
+            <div>
+                <h2 class="font-display text-xl font-black leading-tight text-congente-blue xs:text-2xl sm:text-3xl">
+                    {{ question.text }}
+                </h2>
+                {% if form.response.help_text %}
+                    <p class="mt-2 text-sm text-congente-ink/65">{{ form.response.help_text }}</p>
+                {% endif %}
+            </div>
+
+            {% if question.question_type == 'rating' %}
+                <div x-data="{ selected: '{{ form.response.value|default_if_none:'' }}' }">
+                    <div class="flex flex-wrap justify-center gap-3 sm:grid sm:grid-cols-5">
+                        {% for item in rating_labels %}
+                            <input
+                                type="radio"
+                                name="response"
+                                value="{{ item.value }}"
+                                class="hidden"
+                                x-ref="r{{ item.value }}"
+                                {% if form.response.value == item.value|stringformat:'s' %}checked{% endif %}
+                            >
+                            <button
+                                type="button"
+                                @click="selected='{{ item.value }}'; $refs.r{{ item.value }}.checked = true; setTimeout(() => $el.form.requestSubmit(), 80)"
+                                :class="selected === '{{ item.value }}'
+                                    ? 'ring-2 ring-offset-2 ring-congente-blue border-congente-blue bg-congente-blueSoft shadow-lg shadow-congente-blue/15 scale-[1.03]'
+                                    : 'border-slate-200 bg-white hover:border-congente-blue/50 hover:-translate-y-0.5'"
+                                class="flex w-[calc(33.333%-8px)] min-w-[5.5rem] flex-col items-center justify-center gap-2 rounded-[1.5rem] border px-2 py-4 text-center transition-all duration-200 sm:w-auto sm:min-h-[10rem]"
+                            >
+                                <div class="mood-face mood-{{ item.value }} mx-auto aspect-square"><span class="mouth"></span></div>
+                                <p class="text-[11px] font-bold leading-tight text-congente-blue xs:text-xs sm:text-sm">{{ item.label }}</p>
+                            </button>
+                        {% endfor %}
+                    </div>
+                    <p class="mt-3 text-center text-xs text-congente-ink/50">
+                        Toca una opción · el sistema avanza solo
+                    </p>
+                </div>
+
+            {% elif question.question_type == 'yes_no' or question.question_type == 'single_choice' %}
+                <div x-data="{ selected: '{{ form.response.value|default_if_none:'' }}' }" class="grid gap-3">
+                    {% for value, label in form.response.field.choices %}
+                        <label
+                            :class="selected === '{{ value }}'
+                                ? 'border-congente-blue bg-congente-blue text-white shadow-lg shadow-congente-blue/20'
+                                : 'border-slate-200 bg-white text-congente-ink hover:border-congente-blue/40 hover:bg-slate-50'"
+                            class="flex min-h-[4rem] cursor-pointer items-center gap-4 rounded-2xl border px-4 py-3 transition-all duration-150 sm:px-5 sm:py-4"
+                        >
+                            <input
+                                type="radio"
+                                name="response"
+                                value="{{ value }}"
+                                class="sr-only"
+                                {% if form.response.value == value %}checked{% endif %}
+                                @change="selected='{{ value }}'; $nextTick(() => $event.target.form.requestSubmit())"
+                            >
+                            <span class="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/15 text-sm font-black ring-1 ring-current/20">
+                                {{ forloop.counter }}
+                            </span>
+                            <span class="text-sm font-semibold leading-snug sm:text-base">{{ label }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+
+            {% elif question.question_type == 'multiple_choice' %}
+                <div x-data="{ otherSelected: {% if form.response.value and 'other' in form.response.value or form.other_text.value %}true{% else %}false{% endif %} }" class="space-y-3">
+                    <div class="grid gap-3">
+                        {% for value, label in form.response.field.choices %}
+                            <label class="flex min-h-[4rem] cursor-pointer items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 transition hover:border-congente-orange/50 hover:bg-congente-orangeSoft/40 sm:px-5 sm:py-4">
+                                <input
+                                    type="checkbox"
+                                    name="response"
+                                    value="{{ value }}"
+                                    class="mt-0.5 h-5 w-5 flex-shrink-0 rounded border-slate-300 text-congente-orange focus:ring-congente-orange"
+                                    {% if form.response.value and value in form.response.value %}checked{% endif %}
+                                    {% if value == 'other' %}@change="otherSelected = $event.target.checked"{% endif %}
+                                >
+                                <span class="text-sm font-medium text-congente-ink">{{ label }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+                    <div x-show="otherSelected" x-transition class="pt-1">
+                        <label for="id_other_text" class="mb-1.5 block text-sm font-semibold text-congente-blue">¿Cuál otro?</label>
+                        {{ form.other_text }}
+                    </div>
+                </div>
+
+            {% else %}
+                <div>{{ form.response }}</div>
+            {% endif %}
+
+            {# ── Navigation ── #}
+            <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                {% if previous_step %}
+                    <a href="{% url 'surveys:step' area.slug qr_entry.public_token previous_step %}"
+                       class="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-slate-200 px-5 py-3 text-sm font-semibold text-congente-ink transition hover:border-congente-blue hover:text-congente-blue sm:w-auto">
+                        ← Anterior
+                    </a>
+                {% else %}
+                    <span class="hidden sm:block"></span>
+                {% endif %}
+
+                {% if question.question_type == 'multiple_choice' or question.question_type == 'text' %}
+                    <button type="submit"
+                        class="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-congente-blue px-6 py-3 text-sm font-bold text-white shadow-lg shadow-congente-blue/25 transition hover:-translate-y-0.5 hover:bg-congente-blue/90 sm:w-auto">
+                        {% if next_step %}Continuar →{% else %}Enviar respuestas ✓{% endif %}
+                    </button>
+                {% else %}
+                    <p class="text-center text-xs text-congente-ink/40 sm:text-left">Avance automático al elegir</p>
+                {% endif %}
+            </div>
+
+        </form>
+    </div>
+</div>

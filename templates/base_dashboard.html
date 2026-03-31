@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Panel Congente{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'brand/IconoHD.png' %}">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        congente: {
+                            red: '#D90429',
+                            orange: '#F58220',
+                            yellow: '#FFCA3A',
+                            greenLight: '#8AC926',
+                            green: '#2E9F47',
+                            blue: '#0C3C78',
+                            blueSoft: '#D9ECFF',
+                            ink: '#12304F',
+                            panel: '#F4F8FD'
+                        }
+                    },
+                    boxShadow: {
+                        glow: '0 22px 60px rgba(12, 60, 120, 0.14)',
+                    },
+                    fontFamily: {
+                        display: ['Trebuchet MS', 'Verdana', 'sans-serif'],
+                        body: ['Segoe UI', 'Tahoma', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="min-h-screen bg-slate-100 font-body text-slate-800 antialiased">
+    <div class="relative min-h-screen lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-stretch">
+        <img src="{% static 'brand/IconoHD.png' %}" alt="" class="brand-watermark pointer-events-none absolute bottom-6 right-6 z-0 hidden w-80 opacity-[0.05] lg:block">
+        <aside class="relative z-10 border-b border-congente-blue/10 bg-[linear-gradient(180deg,#F8FBFF_0%,#EDF5FE_100%)] px-5 py-4 text-congente-ink shadow-[10px_0_40px_rgba(12,60,120,0.08)] lg:min-h-screen lg:border-b-0 lg:border-r">
+            <div class="flex h-full flex-col">
+                <div class="border-b border-congente-blue/10 pb-4">
+                    <img src="{% static 'brand/logo.png' %}" alt="Congente" class=" w-auto drop-shadow-[0_10px_20px_rgba(12,60,120,0.12)]">
+                    <p class="mt-3 text-sm font-semibold text-congente-blue">Panel de satisfaccion</p>
+                    <p class="mt-1 text-xs text-congente-ink/60">Seguimiento de experiencia y servicio</p>
+                </div>
+                <nav class="mt-5 space-y-2 text-sm font-semibold">
+                    <a class="block rounded-2xl px-4 py-3 text-congente-blue transition hover:bg-white hover:shadow-sm" href="{% url 'dashboard:index' %}">Resumen</a>
+                    <a class="block rounded-2xl px-4 py-3 text-congente-blue transition hover:bg-white hover:shadow-sm" href="{% url 'dashboard:responses_list' %}">Respuestas</a>
+                    {% if request.user.is_superuser %}
+                        <a class="block rounded-2xl px-4 py-3 text-congente-blue transition hover:bg-white hover:shadow-sm" href="/admin/">Administracion</a>
+                    {% endif %}
+                </nav>
+                <div class="mt-auto pt-6">
+                    <form method="post" action="{% url 'dashboard:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl border border-congente-blue/15 bg-white px-4 py-3 text-sm font-semibold text-congente-blue transition hover:border-congente-blue hover:shadow-sm">Cerrar sesion</button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+        <main class="relative z-10 flex min-h-screen flex-col px-5 py-5 sm:px-8 sm:py-6 lg:px-10">
+            <div class="flex-1">
+                {% block content %}{% endblock %}
+            </div>
+            <footer class="mt-8 border-t border-congente-blue/10 pt-4 text-center text-sm text-congente-ink/65">
+                Desarrollado por Equipo Ingenieria TI
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

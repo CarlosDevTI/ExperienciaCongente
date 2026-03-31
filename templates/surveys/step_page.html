@@ -1,0 +1,17 @@
+{% extends 'base_public.html' %}
+
+{% block title %}{{ area.name }} | Paso {{ step }}{% endblock %}
+
+{% block header_meta %}
+<div class="rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-congente-blue shadow-sm ring-1 ring-congente-blue/10 xs:text-xs sm:px-4 sm:py-2">
+    {{ area.name }}
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-3xl py-1 sm:py-4">
+    <div id="survey-step">
+        {% include 'surveys/partials/question_step.html' %}
+    </div>
+</section>
+{% endblock %}

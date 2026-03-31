@@ -1,0 +1,47 @@
+{% extends 'base_public.html' %}
+{% load static %}
+
+{% block title %}Gracias | {{ area.name }}{% endblock %}
+
+{% block content %}
+<section class="mx-auto max-w-3xl py-6 sm:py-10">
+    <div class="rounded-[2rem] bg-white p-6 text-center shadow-glow ring-1 ring-congente-blue/5 sm:p-10">
+        <div class="flex justify-center">
+            <img src="{% static 'brand/logo.png' %}" alt="Congente" class="h-12 w-auto drop-shadow-[0_8px_16px_rgba(12,60,120,0.10)] sm:h-14">
+        </div>
+
+        <div class="mt-6 flex justify-center">
+            <div class="flex h-20 w-20 items-center justify-center rounded-full bg-congente-blueSoft shadow-lg shadow-congente-blue/10 sm:h-24 sm:w-24">
+                <svg viewBox="0 0 64 64" class="h-10 w-10 text-congente-blue sm:h-12 sm:w-12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="32" cy="32" r="24" fill="currentColor" opacity="0.12" />
+                    <path d="M22 33.5L29.5 41L43 25.5" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </div>
+        </div>
+
+        <h1 class="mt-6 font-display text-3xl font-black text-congente-blue sm:text-4xl">Gracias por responder</h1>
+        <p class="mx-auto mt-3 max-w-md text-base leading-7 text-congente-ink/75">Tu opinion nos ayuda a mejorar.</p>
+
+        {% if repeat_submission %}
+            <p class="mx-auto mt-4 max-w-md text-sm leading-7 text-congente-ink/65 sm:text-base">Ya habiamos recibido una respuesta desde esta sesion para este QR. Evitamos el reenvio accidental, pero tu participacion anterior sigue registrada.</p>
+        {% else %}
+            <p class="mx-auto mt-4 max-w-md text-sm leading-7 text-congente-ink/65 sm:text-base">{{ survey.closing_text }}</p>
+        {% endif %}
+
+        <div class="mx-auto mt-8 grid max-w-md gap-3 sm:grid-cols-2">
+            <div class="rounded-2xl bg-congente-blueSoft p-4 text-center">
+                <p class="text-xs font-bold uppercase tracking-wide text-congente-blue/70">Area</p>
+                <p class="mt-1 text-base font-black leading-tight text-congente-blue">{{ area.name }}</p>
+            </div>
+            <div class="rounded-2xl bg-congente-orangeSoft p-4 text-center">
+                <p class="text-xs font-bold uppercase tracking-wide text-congente-orange/80">Punto</p>
+                <p class="mt-1 text-base font-black leading-tight text-congente-ink">{{ qr_entry.display_name }}</p>
+            </div>
+        </div>
+
+        {% if submission and submission.preferred_channel %}
+            <p class="mt-5 text-sm text-congente-ink/65">Canal preferido: <span class="font-bold text-congente-blue">{{ submission.preferred_channel }}</span></p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

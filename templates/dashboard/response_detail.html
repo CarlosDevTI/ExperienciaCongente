@@ -1,0 +1,49 @@
+﻿{% extends 'base_dashboard.html' %}
+
+{% block title %}Detalle respuesta | Congente{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <h1 class="font-display text-3xl font-black text-congente-blue">Detalle de respuesta</h1>
+            <p class="mt-2 text-sm text-slate-600">{{ submission.area.name }} · {{ submission.qr_entry_point.display_name }}</p>
+        </div>
+        <a href="{% url 'dashboard:responses_list' %}" class="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700">Volver</a>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <p class="text-sm text-slate-500">Tipo de encuesta</p>
+            <p class="mt-2 text-lg font-bold text-congente-blue">{{ submission.survey.name }}</p>
+        </div>
+        <div class="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <p class="text-sm text-slate-500">Punto / origen</p>
+            <p class="mt-2 text-lg font-bold text-congente-blue">{{ submission.qr_entry_point.display_name }}</p>
+        </div>
+        <div class="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <p class="text-sm text-slate-500">Canal preferido</p>
+            <p class="mt-2 text-lg font-bold text-congente-blue">{{ submission.preferred_channel|default:'-' }}</p>
+        </div>
+        <div class="rounded-[1.75rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <p class="text-sm text-slate-500">Fecha</p>
+            <p class="mt-2 text-lg font-bold text-congente-blue">{{ submission.created_at|date:'Y-m-d H:i' }}</p>
+        </div>
+    </div>
+
+    <div class="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <h2 class="text-lg font-bold text-congente-blue">Respuestas</h2>
+        <div class="mt-5 space-y-4">
+            {% for answer in answers %}
+                <article class="rounded-3xl bg-slate-50 p-5 ring-1 ring-slate-200">
+                    <p class="text-sm font-semibold uppercase tracking-[0.16em] text-congente-orange">{{ answer.question.business_label }}</p>
+                    <h3 class="mt-2 text-base font-bold text-slate-800">{{ answer.question.text }}</h3>
+                    <p class="mt-3 text-sm leading-6 text-slate-700">{{ answer.display_value|default:'Sin respuesta' }}</p>
+                </article>
+            {% empty %}
+                <p class="text-sm text-slate-500">Esta participacion no tiene respuestas almacenadas.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

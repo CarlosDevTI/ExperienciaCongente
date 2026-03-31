@@ -1,0 +1,162 @@
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-image:
+        radial-gradient(circle at top left, rgba(245, 130, 32, 0.08), transparent 22%),
+        radial-gradient(circle at right center, rgba(12, 60, 120, 0.07), transparent 18%);
+}
+
+.brand-watermark {
+    filter: saturate(1.05);
+}
+
+textarea,
+input[type='text'],
+select,
+input[type='date'] {
+    border-radius: 1rem;
+    border-color: #d0d7e2;
+    padding: 0.85rem 1rem;
+}
+
+textarea {
+    min-height: 7.5rem;
+}
+
+textarea:focus,
+input[type='text']:focus,
+select:focus,
+input[type='date']:focus {
+    border-color: #0c3c78;
+    box-shadow: 0 0 0 3px rgba(12, 60, 120, 0.12);
+}
+
+.survey-step-shell {
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+#survey-step.htmx-swapping {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+.mood-face {
+    position: relative;
+    height: 5rem;
+    width: 5rem;
+    border-radius: 9999px;
+    box-shadow: inset 0 -10px 18px rgba(0, 0, 0, 0.1), 0 10px 18px rgba(12, 60, 120, 0.1);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+button:hover .mood-face {
+    transform: scale(1.08);
+    box-shadow: inset 0 -10px 18px rgba(0, 0, 0, 0.12), 0 16px 28px rgba(12, 60, 120, 0.14);
+    filter: saturate(1.06);
+}
+
+.mood-face::before,
+.mood-face::after {
+    content: '';
+    position: absolute;
+    top: 1.38rem;
+    width: 0.58rem;
+    height: 0.78rem;
+    border-radius: 9999px;
+    background: #10253f;
+}
+
+.mood-face::before {
+    left: 1.32rem;
+}
+
+.mood-face::after {
+    right: 1.32rem;
+}
+
+.mood-face .mouth {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2.05rem;
+    height: 1.02rem;
+    top: 2.22rem;
+    border: 0.22rem solid #10253f;
+    border-top: 0;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-radius: 0 0 9999px 9999px;
+}
+
+.mood-1 {
+    background: linear-gradient(180deg, #ff5672 0%, #d90429 100%);
+}
+
+.mood-1 .mouth {
+    top: 2.45rem;
+    width: 2rem;
+    height: 0.9rem;
+    border-top: 0.22rem solid #10253f;
+    border-bottom: 0;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-radius: 9999px 9999px 0 0;
+}
+
+.mood-2 {
+    background: linear-gradient(180deg, #ffbf73 0%, #f58220 100%);
+}
+
+.mood-2 .mouth {
+    top: 2.47rem;
+    width: 1.9rem;
+    height: 0.82rem;
+    border-top: 0.22rem solid #10253f;
+    border-bottom: 0;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-radius: 9999px 9999px 0 0;
+}
+
+.mood-3 {
+    background: linear-gradient(180deg, #ffe691 0%, #ffca3a 100%);
+}
+
+.mood-3 .mouth {
+    top: 2.7rem;
+    width: 1.8rem;
+    height: 0;
+    border-top: 0.22rem solid #10253f;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 9999px;
+}
+
+.mood-4 {
+    background: linear-gradient(180deg, #b9ea70 0%, #8ac926 100%);
+}
+
+.mood-5 {
+    background: linear-gradient(180deg, #71cf86 0%, #2e9f47 100%);
+}
+
+@media (max-width: 640px) {
+    .mood-face {
+        height: 4.7rem;
+        width: 4.7rem;
+    }
+
+    .mood-face::before,
+    .mood-face::after {
+        top: 1.25rem;
+    }
+
+    .mood-face .mouth {
+        top: 2.08rem;
+    }
+}

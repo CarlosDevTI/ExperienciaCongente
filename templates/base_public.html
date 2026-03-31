@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Congente{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'brand/IconoHD.png' %}">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    screens: {
+                        xs: '420px',
+                    },
+                    colors: {
+                        congente: {
+                            red: '#D90429',
+                            orange: '#F58220',
+                            orangeSoft: '#FFF1E4',
+                            yellow: '#FFCA3A',
+                            greenLight: '#8AC926',
+                            green: '#2E9F47',
+                            blue: '#0C3C78',
+                            blueSoft: '#D9ECFF',
+                            ink: '#12304F',
+                            sand: '#FFF8F1'
+                        }
+                    },
+                    boxShadow: {
+                        glow: '0 22px 60px rgba(12, 60, 120, 0.14)',
+                    },
+                    fontFamily: {
+                        display: ['Trebuchet MS', 'Verdana', 'sans-serif'],
+                        body: ['Segoe UI', 'Tahoma', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-[#fffaf5] font-body text-congente-ink antialiased">
+    <div class="relative isolate min-h-screen overflow-hidden">
+        <img src="{% static 'brand/IconoHD.png' %}" alt="" class="pointer-events-none absolute right-[-4rem] top-24 -z-10 hidden w-[20rem] select-none opacity-[0.05] lg:block">
+        <div class="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top_left,_rgba(245,130,32,0.14),_transparent_26%),radial-gradient(circle_at_top_right,_rgba(12,60,120,0.12),_transparent_30%),linear-gradient(180deg,_#fffaf5_0%,_#fffdfb_100%)]"></div>
+        <div class="absolute left-0 top-0 -z-10 h-full w-full bg-[radial-gradient(circle_at_18%_22%,_rgba(245,130,32,0.09),_transparent_16%),radial-gradient(circle_at_84%_28%,_rgba(12,60,120,0.07),_transparent_18%)]"></div>
+
+        <header class="mx-auto max-w-4xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+            <div class="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+                <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <a href="/" class="flex-shrink-0">
+                        <img src="{% static 'brand/logo.png' %}" alt="Congente" class="h-12 w-auto drop-shadow-[0_8px_18px_rgba(12,60,120,0.13)] xs:h-14 sm:h-16">
+                    </a>
+                    <div class="space-y-1">
+                        <p class="text-sm font-bold text-congente-blue sm:text-base">Calificador de atencion</p>
+                        <p class="text-xs text-congente-ink/60 sm:text-sm">Experiencia de servicio</p>
+                    </div>
+                </div>
+                <div class="w-full sm:w-auto">
+                    {% block header_meta %}{% endblock %}
+                </div>
+            </div>
+        </header>
+
+        <main class="mx-auto max-w-4xl px-4 pb-10 sm:px-6 lg:px-8">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</body>
+</html>
