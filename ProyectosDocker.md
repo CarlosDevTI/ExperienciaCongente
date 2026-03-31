@@ -8,9 +8,8 @@ Del inventario actual de contenedores se observan estos puertos publicados: `800
 
 Para evitar colisiones, esta app queda propuesta en el puerto:
 
-- `8012` para Nginx del proyecto
-
-Si en `15.215` ese puerto ya estuviera ocupado, solo cambia `NGINX_PUBLIC_PORT` en `.env`.
+- `8012` para Nginx del proyecto en `15.215`
+- `8043` para publicacion HTTPS desde el proxy externo en `15.41`
 
 ## Archivos de despliegue incluidos
 
@@ -30,22 +29,39 @@ Servicios en `docker-compose`:
 
 Flujo:
 
-1. Nginx recibe trafico en `8012`
+1. Nginx del stack escucha en `8012`
 2. Nginx sirve `/static/` desde `staticfiles`
-3. Nginx sirve `/media/` desde `media`
+3. Nginx sirve `/media/` desde el bind mount `./media`
 4. Nginx proxya el resto a Gunicorn (`web:8000`)
 5. Gunicorn sirve Django en modo produccion
+6. El proxy externo en `15.41` publica `https://consulta.congente.coop:8043`
+
+## Persistencia de media y QR
+
+El stack ya queda configurado para persistir media en el host:
+
+- Host: `./media`
+- Contenedor: `/app/media`
+
+Eso significa que los QR generados se guardan realmente en:
+
+- `/home/sa/ExperienciaCongente/media/qrcodes/`
+
+Y ademas se pueden servir por navegador en:
+
+- `http://192.168.15.215:8012/media/qrcodes/<archivo>.png`
+- `https://consulta.congente.coop:8043/media/qrcodes/<archivo>.png`
 
 ## Variables de entorno minimas para produccion
 
-Crea `.env` en el servidor con algo como esto:
+Ejemplo final para tu escenario con proxy externo:
 
 ```env
 DJANGO_SETTINGS_MODULE=config.settings_prod
 DJANGO_SECRET_KEY=CAMBIA_ESTA_CLAVE
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=15.215,tu-dominio.com,www.tu-dominio.com
-DJANGO_CSRF_TRUSTED_ORIGINS=https://tu-dominio.com,https://www.tu-dominio.com
+DJANGO_ALLOWED_HOSTS=192.168.15.215,consulta.congente.coop,localhost,127.0.0.1
+DJANGO_CSRF_TRUSTED_ORIGINS=https://consulta.congente.coop:8043,http://192.168.15.215:8012
 USE_POSTGRES=True
 POSTGRES_DB=congente_surveys
 POSTGRES_USER=congente_user
@@ -53,13 +69,14 @@ POSTGRES_PASSWORD=CAMBIA_ESTA_PASSWORD
 POSTGRES_HOST=db
 POSTGRES_PORT=5432
 DJANGO_LOG_LEVEL=INFO
-APP_BASE_URL=https://tu-dominio.com
+APP_BASE_URL=https://consulta.congente.coop:8043
 CSRF_COOKIE_SECURE=True
 SESSION_COOKIE_SECURE=True
 SESSION_COOKIE_SAMESITE=Lax
 CSRF_COOKIE_SAMESITE=Lax
-SECURE_SSL_REDIRECT=True
+SECURE_SSL_REDIRECT=False
 USE_X_FORWARDED_HOST=True
+SECURE_PROXY_SSL_HEADER_PROTO=https
 GUNICORN_WORKERS=3
 GUNICORN_TIMEOUT=120
 NGINX_PUBLIC_PORT=8012
@@ -69,17 +86,18 @@ DB_WAIT_TIMEOUT=60
 
 Notas:
 
+- `APP_BASE_URL` debe quedar con el dominio publico final para que los QR salgan listos para distribuir.
+- Si accedes directo por IP temporalmente, puedes usar `APP_BASE_URL=http://192.168.15.215:8012` y luego regenerar QR cuando el dominio este activo.
 - No hardcodees secretos en `docker-compose.yml`.
-- `APP_BASE_URL` debe apuntar al dominio productivo real para generar URLs y QRs correctos.
-- Si el TLS termina antes de este stack, mantén `X-Forwarded-Proto` bien configurado.
+- Si tu `DJANGO_SECRET_KEY` contiene `$`, escapa cada uno como `$$` o usa una clave sin `$` para evitar warnings de Compose.
 
-## Paso a paso de despliegue en servidor
+## Paso a paso de despliegue en servidor 15.215
 
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <REPO_URL> experiencia-usuario
-cd experiencia-usuario
+git clone <REPO_URL> ExperienciaCongente
+cd ExperienciaCongente
 ```
 
 ### 2. Crear `.env`
@@ -89,27 +107,25 @@ cp .env.example .env
 nano .env
 ```
 
-Ajusta dominio, secret key, hosts y credenciales.
+### 3. Crear carpeta media local del proyecto
 
-### 3. Construir contenedores
+```bash
+mkdir -p media/qrcodes
+```
+
+### 4. Construir contenedores
 
 ```bash
 docker compose build
 ```
 
-### 4. Levantar servicios
+### 5. Levantar servicios
 
 ```bash
 docker compose up -d
 ```
 
-### 5. Verificar estado
-
-```bash
-docker compose ps
-```
-
-### 6. Ejecutar migraciones manualmente si necesitas forzarlas
+### 6. Ejecutar migraciones
 
 ```bash
 docker compose exec web python manage.py migrate
@@ -127,119 +143,110 @@ docker compose exec web python manage.py createsuperuser
 docker compose exec web python manage.py seed_congente_survey
 ```
 
-### 9. Generar QR con dominio productivo
+### 9. Generar QR apuntando al dominio productivo
 
 ```bash
-docker compose exec web python manage.py generate_qr_pngs
+docker compose exec web python manage.py generate_qr_pngs --survey=encuesta-satisfaccion-2026
 ```
 
-Ese comando usa `APP_BASE_URL` por defecto.
-
-### 10. Ver logs
+### 10. Confirmar archivos en host
 
 ```bash
-docker compose logs -f web
-docker compose logs -f nginx
+ls -lah media/qrcodes/
 ```
 
-### 11. Validar acceso
+### 11. Verificar descarga directa
 
-Abre:
+Abrir en navegador alguno de estos:
 
 ```text
-http://IP_DEL_SERVIDOR:8012/dashboard/
+http://192.168.15.215:8012/media/qrcodes/<archivo>.png
+https://consulta.congente.coop:8043/media/qrcodes/<archivo>.png
 ```
 
-o el dominio configurado si ya tienes proxy externo:
+## Proxy externo en 15.41
 
-```text
-https://tu-dominio.com/dashboard/
+En el Nginx del servidor `15.41`, agrega un bloque equivalente a este:
+
+```nginx
+server {
+    listen 8043 ssl;
+    server_name consulta.congente.coop;
+
+    ssl_certificate /ruta/cert.pem;
+    ssl_certificate_key /ruta/key.pem;
+
+    location / {
+        proxy_pass http://192.168.15.215:8012;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+    }
+}
 ```
+
+Punto importante:
+
+- El Nginx interno en `15.215` ya esta preparado para conservar `X-Forwarded-Proto=https` cuando venga desde `15.41`.
 
 ## Flujo de actualizacion con Git
 
-Cuando haya cambios:
-
 ```bash
-cd experiencia-usuario
+cd ~/ExperienciaCongente
 git pull
 docker compose build
 docker compose up -d
 ```
 
-Luego, si hubo cambios de esquema:
+Si hubo cambios de esquema:
 
 ```bash
 docker compose exec web python manage.py migrate
 ```
 
-## Buenas practicas aplicadas
+Si cambiaste dominio o `APP_BASE_URL`, regenera los QR:
 
-- Imagen base ligera: `python:3.12-slim`
-- Gunicorn en produccion
-- Nginx separado para reverse proxy y estaticos
-- Variables sensibles via `.env`
-- `restart: always`
-- Logs a stdout/stderr para `docker compose logs`
-- `collectstatic` automatico en `entrypoint.sh`
-- Migraciones automaticas al arrancar `web`
-- No se sirven estaticos con Django en produccion
-
-## Gunicorn
-
-Configuracion actual por variables:
-
-- `GUNICORN_WORKERS=3`
-- `GUNICORN_TIMEOUT=120`
-
-Ajuste recomendado:
-
-- VM pequena: `2` o `3` workers
-- VM mediana: `3` a `5` workers
+```bash
+docker compose exec web python manage.py generate_qr_pngs --survey=encuesta-satisfaccion-2026
+```
 
 ## Tokens y QR en produccion
 
-### Token
+### Flujo correcto
 
-Cada `QrEntryPoint` genera automaticamente un token unico con `UUID4`.
+1. Crear encuesta (`Survey`) o ejecutar seed
+2. Crear areas (`Area`) o ejecutar seed
+3. Crear `QrEntryPoint` por area
+4. Cada `QrEntryPoint` genera su token UUID automaticamente
+5. `generate_qr_pngs` toma esos entry points y crea los PNG
 
-Caracteristicas:
+### Comandos utiles
 
-- No es fijo globalmente
-- No es secuencial
-- No cambia por visita
-- Identifica de forma unica el origen del QR
-- Se asocia al `QrEntryPoint` y, por tanto, al area y punto de atencion
+Listar URLs activas:
 
-Ejemplo de URL final:
-
-```text
-https://tu-dominio.com/encuesta/caja/550e8400-e29b-41d4-a716-446655440000/
+```bash
+docker compose exec web python manage.py list_qr_entrypoints --survey=encuesta-satisfaccion-2026
 ```
 
-### Regenerar token o QR
-
-Rotar token de un punto:
+Regenerar token de un punto:
 
 ```bash
 docker compose exec web python manage.py create_qr_entrypoint encuesta-satisfaccion-2026 caja "Caja" --rotate-token
 ```
 
-Listar URLs activas:
+Generar QR para una encuesta:
 
 ```bash
-docker compose exec web python manage.py list_qr_entrypoints
+docker compose exec web python manage.py generate_qr_pngs --survey=encuesta-satisfaccion-2026
 ```
 
-Generar PNG QR:
+Generar para todas las encuestas activas:
 
 ```bash
-docker compose exec web python manage.py generate_qr_pngs
+docker compose exec web python manage.py generate_qr_pngs --all-surveys
 ```
-
-Los PNG quedan en:
-
-- `media/qrcodes/`
 
 ## Seguridad del flujo de encuesta
 
@@ -253,37 +260,16 @@ Ya implementado en la app:
 - Cabeceras `no-store` y `no-cache` en landing, pasos y pantalla final
 - Persistencia por `session_uuid + qr_entry_point`
 
-### Comportamiento esperado
-
-- Si el usuario ya completo la encuesta con la misma sesion y el QR es de una sola respuesta: ve pantalla final, no puede duplicar envio.
-- Si el usuario dejo la encuesta en progreso: retoma su `SurveySubmission` existente.
-- Si vuelve atras en el navegador: no se deben cachear los pasos ni reenviar formularios automaticamente.
-
-## Estaticos y media
-
-Nginx sirve:
-
-- `/static/` desde `staticfiles`
-- `/media/` desde `media`
-
-Django solo ejecuta `collectstatic`; no expone estaticos en produccion.
-
-## Disponibilidad
-
-Se usa:
-
-- `restart: always`
-
-Con eso, si Docker reinicia o el host se levanta de nuevo, el stack intenta volver automaticamente.
-
 ## Checklist final
 
 - `.env` listo
-- `APP_BASE_URL` apunta al dominio real
-- `DJANGO_ALLOWED_HOSTS` correcto
-- `DJANGO_CSRF_TRUSTED_ORIGINS` correcto
+- `APP_BASE_URL` apunta a `https://consulta.congente.coop:8043`
+- `DJANGO_ALLOWED_HOSTS` incluye `192.168.15.215` y `consulta.congente.coop`
+- `DJANGO_CSRF_TRUSTED_ORIGINS` incluye `https://consulta.congente.coop:8043`
 - `docker compose up -d` sin errores
-- `docker compose logs -f web` sin fallos de migracion
+- `media/qrcodes/` existe en el host
+- `http://192.168.15.215:8012/media/qrcodes/<archivo>.png` responde
+- `https://consulta.congente.coop:8043/media/qrcodes/<archivo>.png` responde
 - `/dashboard/` accesible
 - `/encuesta/<area>/<token>/` accesible
-- QR regenerados con dominio productivo
+- QR listos para distribucion publica

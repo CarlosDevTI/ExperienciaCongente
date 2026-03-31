@@ -44,7 +44,7 @@ python manage.py seed_congente_survey
 6. Listar URLs validas de prueba:
 
 ```bash
-python manage.py list_qr_entrypoints
+python manage.py list_qr_entrypoints --survey=encuesta-satisfaccion-2026
 ```
 
 7. Crear superusuario:
@@ -65,7 +65,7 @@ python manage.py runserver
 - `DJANGO_SECRET_KEY`: clave secreta
 - `DJANGO_DEBUG`: `True` o `False`
 - `DJANGO_ALLOWED_HOSTS`: hosts separados por coma
-- `DJANGO_CSRF_TRUSTED_ORIGINS`: orígenes HTTPS confiables separados por coma
+- `DJANGO_CSRF_TRUSTED_ORIGINS`: origenes confiables separados por coma
 - `DATABASE_URL`: URL completa de base de datos o usar las variables `POSTGRES_*`
 - `USE_POSTGRES`: activa configuracion PostgreSQL por variables separadas
 - `DJANGO_LOG_LEVEL`: nivel de logging
@@ -73,6 +73,7 @@ python manage.py runserver
 - `GUNICORN_WORKERS`: numero de workers para produccion Docker
 - `GUNICORN_TIMEOUT`: timeout Gunicorn en segundos
 - `NGINX_PUBLIC_PORT`: puerto publicado por Nginx en Docker
+- `SECURE_PROXY_SSL_HEADER_PROTO`: `http` o `https` segun el proxy aguas arriba
 
 ### Ejemplo minimo para desarrollo con SQLite
 
@@ -114,13 +115,6 @@ El campo `public_token` se genera automaticamente con `uuid4`.
 - No es secuencial.
 - Se queda fijo para ese QR mientras no lo rotes manualmente.
 
-En otras palabras:
-
-- No cambia por cada visita del usuario.
-- No cambia por cada submit.
-- Si vuelves a usar el mismo `QrEntryPoint`, el token sigue siendo el mismo.
-- Solo cambia si creas un QR nuevo o ejecutas `create_qr_entrypoint --rotate-token`.
-
 ### 3. Asociacion del token con el entry point
 
 El token vive en el modelo `QrEntryPoint`. Eso permite rastrear el origen de cada respuesta porque cada `SurveySubmission` guarda el `qr_entry_point` que disparo el flujo.
@@ -139,48 +133,32 @@ Ejemplo:
 /encuesta/caja/550e8400-e29b-41d4-a716-446655440000/
 ```
 
-## Los tokens actuales son definitivos o de prueba?
-
-Los tokens que ves hoy en tu base local son los tokens activos reales de ese entorno local. No son "temporales por visita". Son estables hasta que:
-
-- corras `create_qr_entrypoint --rotate-token`, o
-- elimines/recrees el `QrEntryPoint`, o
-- uses otra base de datos.
-
-## Que URL debe usarse para generar el QR?
-
-Debe usarse la URL publica completa, incluyendo host, area y token. Ejemplo local:
-
-```text
-http://127.0.0.1:8000/encuesta/caja/550e8400-e29b-41d4-a716-446655440000/
-```
-
-Ese es el valor que debe codificarse dentro del QR.
-
 ## El sistema genera el QR automaticamente?
 
-Si. El proyecto ya puede generar PNGs QR de forma automatica con este comando:
+Si. El proyecto puede generar PNGs QR automaticamente con:
 
 ```bash
-python manage.py generate_qr_pngs
+python manage.py generate_qr_pngs --survey=encuesta-satisfaccion-2026
 ```
 
-Salida:
+O para todas las encuestas activas:
+
+```bash
+python manage.py generate_qr_pngs --all-surveys
+```
+
+Comportamiento:
 
 - Crea archivos PNG en `media/qrcodes/`
-- Genera uno por cada `QrEntryPoint` activo
-- Cada PNG apunta a su URL publica completa usando `APP_BASE_URL`
-
-Si quieres rotar el token antes de regenerar el QR:
-
-```bash
-python manage.py create_qr_entrypoint encuesta-satisfaccion-2026 caja "Caja" --rotate-token
-```
+- Usa `APP_BASE_URL` para construir la URL publica final
+- Requiere que la encuesta exista y tenga `QrEntryPoint` activos
+- Si hay varias encuestas activas y no indicas `--survey`, lista los slugs disponibles
+- Si es una instalacion nueva, primero ejecuta `python manage.py seed_congente_survey`
 
 ## Flujo publico completo
 
 1. Ejecuta `python manage.py seed_congente_survey`.
-2. Ejecuta `python manage.py list_qr_entrypoints`.
+2. Ejecuta `python manage.py list_qr_entrypoints --survey=encuesta-satisfaccion-2026`.
 3. Copia una de las URLs activas.
 4. Abrela en el navegador.
 5. El flujo es:
@@ -192,63 +170,32 @@ python manage.py create_qr_entrypoint encuesta-satisfaccion-2026 caja "Caja" --r
 
 El estado se mantiene con una cookie propia (`congente_survey_session`) y un `SurveySubmission` asociado a ese `QrEntryPoint`. Si el usuario vuelve con la misma sesion, el sistema puede continuar o bloquear reenvio accidental segun la configuracion del QR. Las vistas de encuesta se sirven con `no-store` y `no-cache` para reducir problemas de reenvio por navegador.
 
-## Preguntas por area
-
-Las preguntas se asignan dinamicamente por `AreaQuestion` y se cargan segun el `area_slug` del QR activo:
-
-- `caja`: `q1`, `q2`, `q7`, `q8`, `q9`, `q10`
-- `asesoria`: `q1`, `q3`, `q7`, `q8`, `q9`, `q10`
-- `servicio-asociado`: `q4`, `q7`, `q8`, `q9`, `q10`
-- `servicio-convenios`: `q5`, `q6`, `q7`, `q8`, `q9`, `q10`
-
-## URLs principales
-
-- `/encuesta/<area>/<token>/`: landing publica por QR
-- `/encuesta/<area>/<token>/paso/<n>/`: wizard publico HTMX
-- `/dashboard/`: resumen interno
-- `/dashboard/respuestas/`: listado filtrable
-- `/admin/`: administracion tecnica
-
-## Branding y assets
-
-Los assets oficiales se sirven desde `static/brand/`:
-
-- `logo.png`: navbar y sidebar
-- `IconoHD.png`: favicon y marca de agua sutil
-
-## Exportaciones
-
-- CSV: `/dashboard/export/responses.csv`
-- Excel: `/dashboard/export/responses.xlsx`
-
-## Tests
-
-```bash
-python manage.py test
-```
-
 ## Produccion Docker
 
-Este repositorio ya incluye:
+El stack publica la app en `http://IP:8012` y deja persistente `media/` en el host con el bind mount:
 
-- `Dockerfile`
-- `docker-compose.yml`
-- `docker/entrypoint.sh`
-- `docker/nginx/default.conf`
+- Host: `./media`
+- Contenedor: `/app/media`
 
-Despliegue resumido:
+Eso permite que los QR queden disponibles fisicamente en el servidor y se sirvan por Nginx en `/media/`.
+
+Flujo resumido:
 
 ```bash
 git clone <REPO_URL>
-cd experiencia-usuario
+cd ExperienciaCongente
 cp .env.example .env
+mkdir -p media/qrcodes
 # editar .env para produccion
 
 docker compose build
 docker compose up -d
 docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
-docker compose exec web python manage.py generate_qr_pngs
+docker compose exec web python manage.py seed_congente_survey
+docker compose exec web python manage.py generate_qr_pngs --survey=encuesta-satisfaccion-2026
 ```
 
-La guia completa esta en `ProyectosDocker.md`.
+Guia completa:
+
+- `ProyectosDocker.md`
