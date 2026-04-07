@@ -1,5 +1,4 @@
 import csv
-import json
 from io import BytesIO
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -30,7 +29,7 @@ def index(request):
         'summary': summary,
         'filters': request.GET,
         'filter_options': get_filter_options(),
-        'chart_data': json.dumps(build_chart_payload(summary)),
+        'chart_data': build_chart_payload(summary),
     }
     return render(request, 'dashboard/index.html', context)
 

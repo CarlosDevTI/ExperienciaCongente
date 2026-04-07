@@ -3,7 +3,7 @@
 {% block title %}Panel | Congente{% endblock %}
 
 {% block content %}
-<div class="space-y-6" x-data="{ charts: JSON.parse($el.dataset.charts) }" data-charts='{{ chart_data|escapejs }}'>
+<div class="space-y-6">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
             <h1 class="font-display text-3xl font-black text-congente-blue">Panel de satisfaccion</h1>
@@ -81,14 +81,38 @@
             <div class="mb-4 flex items-center justify-between">
                 <h2 class="text-lg font-bold text-congente-blue">Tendencia diaria</h2>
             </div>
-            <div class="h-72">
-                <canvas id="trendChart"></canvas>
+            <div class="space-y-4">
+                <div class="max-h-44 space-y-2 overflow-y-auto pr-1 text-sm text-slate-600">
+                    {% for item in summary.trends %}
+                        <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                            <span>{{ item.day|date:'Y-m-d' }}</span>
+                            <span class="font-semibold text-congente-blue">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p>No hay registros suficientes para mostrar tendencia con estos filtros.</p>
+                    {% endfor %}
+                </div>
+                <div class="h-44 sm:h-48 lg:h-52">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
         </div>
         <div class="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 class="text-lg font-bold text-congente-blue">Distribucion por canal</h2>
-            <div class="mt-5 h-72">
-                <canvas id="channelChart"></canvas>
+            <div class="mt-5 space-y-4">
+                <div class="max-h-44 space-y-2 overflow-y-auto pr-1 text-sm text-slate-600">
+                    {% for item in summary.channel_distribution %}
+                        <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                            <span>{{ item.preferred_channel }}</span>
+                            <span class="font-semibold text-congente-blue">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p>No hay canales registrados en los filtros seleccionados.</p>
+                    {% endfor %}
+                </div>
+                <div class="h-44 sm:h-48 lg:h-52">
+                    <canvas id="channelChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -96,8 +120,20 @@
     <div class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div class="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <h2 class="text-lg font-bold text-congente-blue">Respuestas por area</h2>
-            <div class="mt-5 h-72">
-                <canvas id="areaChart"></canvas>
+            <div class="mt-5 space-y-4">
+                <div class="max-h-44 space-y-2 overflow-y-auto pr-1 text-sm text-slate-600">
+                    {% for item in summary.responses_by_area %}
+                        <div class="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+                            <span>{{ item.area__name }}</span>
+                            <span class="font-semibold text-congente-blue">{{ item.total }}</span>
+                        </div>
+                    {% empty %}
+                        <p>No hay areas con respuestas para este filtro.</p>
+                    {% endfor %}
+                </div>
+                <div class="h-44 sm:h-48 lg:h-52">
+                    <canvas id="areaChart"></canvas>
+                </div>
             </div>
         </div>
         <div class="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -138,53 +174,86 @@
         </div>
     </div>
 </div>
+{{ chart_data|json_script:"dashboard-chart-data" }}
 
 <script>
-    const charts = JSON.parse(document.querySelector('[data-charts]').dataset.charts);
-    const sharedOptions = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-    };
+    (() => {
+        const chartNode = document.getElementById('dashboard-chart-data');
+        if (!chartNode || !window.Chart) {
+            return;
+        }
 
-    new Chart(document.getElementById('trendChart'), {
-        type: 'line',
-        data: {
-            labels: charts.trend.labels,
-            datasets: [{
-                data: charts.trend.values,
-                borderColor: '#0C3C78',
-                backgroundColor: 'rgba(12, 60, 120, 0.1)',
-                tension: 0.35,
-                fill: true,
-            }],
-        },
-        options: sharedOptions,
-    });
+        const charts = JSON.parse(chartNode.textContent);
+        const integerScale = {
+            beginAtZero: true,
+            ticks: {
+                stepSize: 1,
+                precision: 0,
+                callback: (value) => Number.isInteger(value) ? value : '',
+            },
+        };
 
-    new Chart(document.getElementById('channelChart'), {
-        type: 'doughnut',
-        data: {
-            labels: charts.channelDistribution.labels,
-            datasets: [{
-                data: charts.channelDistribution.values,
-                backgroundColor: ['#F58220', '#0C3C78', '#4EA5D9', '#FFC78C', '#4B5563', '#FDBA74'],
-            }],
-        },
-        options: { responsive: true, maintainAspectRatio: false },
-    });
+        const sharedOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: integerScale,
+            },
+        };
 
-    new Chart(document.getElementById('areaChart'), {
-        type: 'bar',
-        data: {
-            labels: charts.responsesByArea.labels,
-            datasets: [{
-                data: charts.responsesByArea.values,
-                backgroundColor: ['#F58220', '#0C3C78', '#4EA5D9', '#FDBA74'],
-                borderRadius: 14,
-            }],
-        },
-        options: sharedOptions,
-    });
+        const trendCanvas = document.getElementById('trendChart');
+        if (trendCanvas && charts.trend.labels.length) {
+            new Chart(trendCanvas, {
+                type: 'line',
+                data: {
+                    labels: charts.trend.labels,
+                    datasets: [{
+                        data: charts.trend.values,
+                        borderColor: '#0C3C78',
+                        backgroundColor: 'rgba(12, 60, 120, 0.1)',
+                        tension: 0,
+                        fill: true,
+                    }],
+                },
+                options: sharedOptions,
+            });
+        }
+
+        const channelCanvas = document.getElementById('channelChart');
+        if (channelCanvas && charts.channelDistribution.labels.length) {
+            new Chart(channelCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: charts.channelDistribution.labels,
+                    datasets: [{
+                        data: charts.channelDistribution.values,
+                        backgroundColor: ['#F58220', '#0C3C78', '#4EA5D9', '#FFC78C', '#4B5563', '#FDBA74'],
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                },
+            });
+        }
+
+        const areaCanvas = document.getElementById('areaChart');
+        if (areaCanvas && charts.responsesByArea.labels.length) {
+            new Chart(areaCanvas, {
+                type: 'bar',
+                data: {
+                    labels: charts.responsesByArea.labels,
+                    datasets: [{
+                        data: charts.responsesByArea.values,
+                        backgroundColor: ['#F58220', '#0C3C78', '#4EA5D9', '#FDBA74'],
+                        borderRadius: 14,
+                    }],
+                },
+                options: sharedOptions,
+            });
+        }
+    })();
 </script>
 {% endblock %}

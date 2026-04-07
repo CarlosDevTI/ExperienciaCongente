@@ -19,7 +19,7 @@ class FakeQrImage:
 
 class GenerateQrPngsCommandTests(TestCase):
     def setUp(self):
-        self.temp_dir = Path(tempfile.mkdtemp(dir=Path.cwd()))
+        self.temp_dir = Path(tempfile.mkdtemp(prefix='experiencia-qrs-'))
 
     def tearDown(self):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
